@@ -5,3 +5,5 @@ pyarrow
 matplotlib
 pytest
 joblib
+streamlit
+plotly
