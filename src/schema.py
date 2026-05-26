@@ -12,8 +12,13 @@ REQUIRED_COLUMNS = [
     "ack_flag_count",
     "rst_flag_count",
     "fin_flag_count",
-    "protocol",
     "label",
+]
+
+
+# protocol nije uvijek prisutan u CICIDS2017 CSV fajlovima, pa ga čuvamo kao opcioni
+OPTIONAL_COLUMNS = [
+    "protocol",
 ]
 
 

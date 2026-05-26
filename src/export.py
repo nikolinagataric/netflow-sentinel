@@ -38,12 +38,14 @@ def save_dataframe(df, path):
 def create_annotation_summary(df):
     """pravi kratak pregled anotiranih flow podataka."""
     # value_counts nam daje koliko puta se pojavljuje svaka kategorija
+    manual_review_count = int((df["needs_manual_review"] == True).sum())
+
     return {
         "total_rows": int(len(df)),
         "traffic_type_counts": _value_counts_as_ints(df, "traffic_type"),
         "risk_level_counts": _value_counts_as_ints(df, "risk_level"),
         "attack_family_counts": _value_counts_as_ints(df, "attack_family"),
-        "manual_review_count": int(df["needs_manual_review"].sum()),
+        "manual_review_count": manual_review_count,
     }
 
 

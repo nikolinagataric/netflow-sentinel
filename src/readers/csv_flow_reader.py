@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.schema import REQUIRED_COLUMNS
+from src.schema import OPTIONAL_COLUMNS, REQUIRED_COLUMNS
 from src.readers.base_reader import BaseFlowReader
 
 
@@ -35,5 +35,6 @@ class CSVFlowReader(BaseFlowReader):
         df = df.rename(columns=CICIDS2017_COLUMN_MAP)
 
         # vraćamo samo kolone koje naš pipeline zna da obradi
-        available_columns = [column for column in REQUIRED_COLUMNS if column in df.columns]
+        standard_columns = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
+        available_columns = [column for column in standard_columns if column in df.columns]
         return df[available_columns]

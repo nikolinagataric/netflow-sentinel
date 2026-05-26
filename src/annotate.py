@@ -48,10 +48,12 @@ def annotate_flows(df):
     annotated_df["attack_family"] = annotated_df["label"].apply(get_attack_family)
     annotated_df["risk_level"] = annotated_df["attack_family"].apply(get_risk_level)
     annotated_df["traffic_type"] = annotated_df["attack_family"].apply(
-        lambda family: "benign" if family == "benign" else "attack"
+        lambda family: "normal" if family == "benign" else "attack"
     )
-    annotated_df["needs_manual_review"] = annotated_df["attack_family"].eq(
-        "other_attack"
+
+    # sve iznad low rizika šaljemo na ručni pregled
+    annotated_df["needs_manual_review"] = annotated_df["risk_level"].isin(
+        ["medium", "high", "critical"]
     )
 
     return annotated_df

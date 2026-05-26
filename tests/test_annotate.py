@@ -34,7 +34,7 @@ def test_ftp_patator_gets_brute_force_family_and_high_risk():
 
 
 def test_annotate_flows_adds_expected_columns():
-    df = pd.DataFrame({"label": ["BENIGN", "PortScan", "Unknown Attack"]})
+    df = pd.DataFrame({"label": ["BENIGN", "DDoS", "PortScan", "Unknown Attack"]})
 
     result = annotate_flows(df)
 
@@ -45,6 +45,10 @@ def test_annotate_flows_adds_expected_columns():
         "needs_manual_review",
     }
     assert expected_columns.issubset(result.columns)
-    assert result.loc[0, "traffic_type"] == "benign"
+    assert result.loc[0, "traffic_type"] == "normal"
     assert result.loc[1, "traffic_type"] == "attack"
+    assert result.loc[2, "traffic_type"] == "attack"
+    assert bool(result.loc[0, "needs_manual_review"]) is False
+    assert bool(result.loc[1, "needs_manual_review"]) is True
     assert bool(result.loc[2, "needs_manual_review"]) is True
+    assert bool(result.loc[3, "needs_manual_review"]) is True
