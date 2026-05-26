@@ -7,6 +7,7 @@ from src.export import create_annotation_summary, save_dataframe, save_json
 from src.features import add_network_features
 from src.readers.csv_flow_reader import CSVFlowReader
 from src.readers.pcap_flow_reader import PCAPFlowReader
+from src.train import train_binary_classifier
 from src.validate import validate_schema, validate_values
 
 
@@ -38,10 +39,15 @@ def parse_args():
         default=None,
         help="Optional maximum number of rows to process.",
     )
+    parser.add_argument(
+        "--train-model",
+        action="store_true",
+        help="Train a simple binary classifier after annotation.",
+    )
     return parser.parse_args()
 
 
-def run_pipeline(input_path, output_path, max_rows=None):
+def run_pipeline(input_path, output_path, max_rows=None, train_model=False):
     """pokreće cijeli pipeline od ulaznog fajla do anotiranog izlaza."""
     print("Selecting input reader...")
     reader = get_reader(input_path)
@@ -80,6 +86,12 @@ def run_pipeline(input_path, output_path, max_rows=None):
     print("Annotating flows...")
     df = annotate_flows(df)
 
+    if train_model:
+        # Ovaj ML korak je opcioni dodatak nakon pripreme podataka
+        print("Training binary classifier...")
+        model_metrics = train_binary_classifier(df)
+        save_json(model_metrics, "reports/model_metrics.json")
+
     print(f"Saving annotated flows to {output_path}...")
     save_dataframe(df, output_path)
 
@@ -95,7 +107,7 @@ def run_pipeline(input_path, output_path, max_rows=None):
 def main():
     """ulazna tačka kada se modul pokrene preko python -m."""
     args = parse_args()
-    run_pipeline(args.input, args.output, args.max_rows)
+    run_pipeline(args.input, args.output, args.max_rows, args.train_model)
 
 
 if __name__ == "__main__":
