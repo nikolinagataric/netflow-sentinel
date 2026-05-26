@@ -111,6 +111,32 @@ Run the pipeline with optional ML training:
 python -m src.pipeline --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000 --train-model
 ```
 
+## Docker Usage
+
+Build image:
+
+```powershell
+docker build -t netflow-sentinel .
+```
+
+Show pipeline help:
+
+```powershell
+docker run --rm netflow-sentinel --help
+```
+
+Run pipeline with local data mounted, PowerShell version:
+
+```powershell
+docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/reports:/app/reports netflow-sentinel --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000
+```
+
+Run pipeline with ML:
+
+```powershell
+docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/reports:/app/reports -v ${PWD}/models:/app/models netflow-sentinel --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000 --train-model
+```
+
 ## Example Results
 
 The numbers below were generated from local sample runs and may change if a different row limit or dataset file is used.
