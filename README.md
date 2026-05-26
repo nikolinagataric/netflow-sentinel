@@ -1,41 +1,25 @@
 # NetFlow Sentinel
 
-A modular Python data pipeline for network traffic validation, risk annotation, and downstream threat detection.
+NetFlow Sentinel is a Python project for processing CICIDS2017 network traffic flow data. It validates, cleans, annotates and analyzes flow records, with an optional machine learning step and a simple dashboard for viewing the results.
 
-NetFlow Sentinel is a Python data pipeline for processing, validating, annotating, and analyzing network traffic flow data. It is built around CICIDS2017 CSV flow files and keeps the workflow modular, testable, and easy to run from the command line.
+The main focus of the project is the data pipeline: reading raw flow data, checking it, preparing it, adding useful annotations, and exporting results in a reproducible way.
 
-The project focuses on the data pipeline first: ingestion, schema checks, value checks, cleaning, feature engineering, risk annotation, export, reporting, and optional downstream machine learning readiness.
+## What the Project Does
 
-## Key Features
-
-- CICIDS2017 CSV flow ingestion
-- schema and value validation
-- data cleaning for NaN, infinite values and duplicates
-- network-specific feature engineering
-- risk annotation workflow
-- dataset inspection CLI
-- optional binary ML classifier
-- pytest test suite
-- planned PCAP extension
-
-## Why This Project
-
-This project is inspired by data pipeline principles used in sensor-data processing systems. Instead of automotive sensor data, NetFlow Sentinel works with network traffic telemetry, but the core ideas are similar:
-
-- ingestion from raw files
-- validation before processing
-- cleaning and normalization
-- annotation for downstream analysis
-- reproducible pipeline execution
-- machine learning readiness after data preparation
-
-The goal is not to present a production intrusion detection system. The goal is to show a clear, engineering-oriented workflow for turning raw telemetry data into validated, enriched, and usable outputs.
+- reads CICIDS2017 CSV flow files
+- validates expected columns and values
+- cleans missing, infinite and duplicate values
+- creates additional network-related features
+- maps raw labels into simpler categories like traffic type, attack family and risk level
+- exports processed data and JSON reports
+- optionally trains a basic BENIGN vs ATTACK classifier
+- provides a Streamlit dashboard for result overview
 
 ## Dataset
 
-NetFlow Sentinel uses CICIDS2017 CSV flow files.
+This project uses CICIDS2017 CSV flow files.
 
-The raw dataset is not included in this repository because the files are large. To run the pipeline, download the CICIDS2017 CSV files separately and place them in:
+The raw dataset is not included in this repository because the files are large. To run the project locally, download the CICIDS2017 CSV files separately and place them in:
 
 ```text
 data/raw/
@@ -58,6 +42,7 @@ CSV flow file
 -> Risk annotation
 -> Export processed data and reports
 -> Optional ML training
+-> Dashboard
 ```
 
 ## Project Structure
@@ -66,6 +51,7 @@ CSV flow file
 netflow-sentinel/
 ├── src/              # pipeline modules and CLI tools
 ├── tests/            # pytest test suite
+├── dashboard/        # Streamlit dashboard
 ├── data/             # raw and processed data folders
 ├── reports/          # generated JSON reports
 ├── models/           # generated ML model files
@@ -74,12 +60,12 @@ netflow-sentinel/
 ├── notebooks/        # exploratory notebooks
 ├── requirements.txt
 ├── pytest.ini
+├── Dockerfile
+├── .dockerignore
 └── README.md
 ```
 
-## Main Commands
-
-Install dependencies:
+## Setup
 
 ```powershell
 python -m venv .venv
@@ -87,31 +73,43 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Run tests:
+## Usage
+
+### Run Tests
 
 ```powershell
 pytest
 ```
 
-Inspect a dataset before running the full pipeline:
+### Inspect Dataset
+
+Use this before running the full pipeline to check labels and row distribution:
 
 ```powershell
 python -m src.inspect_dataset --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv"
 ```
 
-Run the pipeline:
+### Run Pipeline
 
 ```powershell
 python -m src.pipeline --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000
 ```
 
-Run the pipeline with optional ML training:
+### Run Pipeline With ML
 
 ```powershell
 python -m src.pipeline --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000 --train-model
 ```
 
-## Docker Usage
+### Run Dashboard
+
+The dashboard reads generated files from `data/processed/` and `reports/`.
+
+```powershell
+streamlit run dashboard/app.py
+```
+
+### Run With Docker
 
 Build image:
 
@@ -139,7 +137,7 @@ docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/reports:/app/reports -v ${PWD
 
 ## Example Results
 
-The numbers below were generated from local sample runs and may change if a different row limit or dataset file is used.
+These results are from local sample runs and can change depending on the selected file and row limit.
 
 ### DDoS Example Summary
 
@@ -182,33 +180,34 @@ Example metrics from the limited DDoS sample:
 - `train_rows`: 38565
 - `test_rows`: 9642
 
-These metrics were obtained on a limited DDoS sample and should not be interpreted as a production-grade intrusion detection result. The ML step is included to demonstrate downstream readiness of the processed data.
+The model is intentionally simple. I used it only to show that the processed data can be used for a downstream classification task, not as a production-ready intrusion detection system.
 
 ## Annotation Logic
 
-The annotation layer maps raw CICIDS2017 labels into simpler operational categories:
+The annotation layer maps raw CICIDS2017 labels into simpler categories:
 
-- `BENIGN` -> `normal`, `benign`, `low`, no manual review
-- `DDoS` / `DoS` -> `attack`, `denial_of_service`, `critical`, manual review
-- `PortScan` -> `attack`, `reconnaissance`, `medium`, manual review
-- `Patator` -> `attack`, `brute_force`, `high`, manual review
-- `Web Attack` -> `attack`, `web_attack`, `high`, manual review
-- `Bot` -> `attack`, `botnet`, `high`, manual review
-- `Infiltration` -> `attack`, `infiltration`, `critical`, manual review
-- unknown attack labels -> `attack`, `other_attack`, `high`, manual review
+- `BENIGN` -> `normal` / `benign` / `low`
+- `DDoS` / `DoS` -> `attack` / `denial_of_service` / `critical`
+- `PortScan` -> `attack` / `reconnaissance` / `medium`
+- `Patator` -> `attack` / `brute_force` / `high`
+- `Web Attack` -> `attack` / `web_attack` / `high`
+- `Bot` -> `attack` / `botnet` / `high`
+- `Infiltration` -> `attack` / `infiltration` / `critical`
+- unknown attack labels -> `attack` / `other_attack` / `high`
+
+Flows with `medium`, `high` or `critical` risk are marked for manual review.
 
 ## Future Improvements
 
-- PCAP/PCAPNG reader implementation, currently planned and not implemented yet
-- Dockerized execution
-- AWS Step Functions orchestration
-- Terraform infrastructure skeleton
-- more advanced model evaluation
-- multi-file dataset processing
+- PCAP/PCAPNG reader
+- multi-file processing
+- more detailed model evaluation
+- cloud orchestration example
+- Terraform skeleton
+- richer dashboard views
 
-## Important Notes
+## Notes
 
-- `data/raw/`, `data/processed/`, `reports/`, and `models/` are ignored by Git.
-- CICIDS2017 dataset files must be downloaded separately.
-- This project is educational and portfolio-oriented.
-- The main focus is the data pipeline. The ML step is intentionally simple and optional.
+- raw datasets and generated outputs are ignored by Git
+- dataset files must be downloaded separately
+- this is a portfolio/learning project focused on data processing and pipeline structure
