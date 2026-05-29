@@ -10,10 +10,10 @@ output "ecr_repository_url" {
 
 output "lambda_function_name" {
   description = "Lambda function name."
-  value       = aws_lambda_function.pipeline.function_name
+  value       = var.deploy_lambda ? aws_lambda_function.pipeline[0].function_name : null
 }
 
 output "step_function_arn" {
   description = "Step Functions state machine ARN."
-  value       = aws_sfn_state_machine.pipeline.arn
+  value       = var.deploy_lambda ? aws_sfn_state_machine.pipeline[0].arn : null
 }

@@ -45,7 +45,7 @@ aws configure
 
 Use an IAM user or role with only the permissions needed for this project.
 
-### 3. Initialize Terraform
+### 3. Phase 1: Initialize Terraform
 
 From the Terraform folder:
 
@@ -54,18 +54,25 @@ cd infra/terraform
 terraform init
 ```
 
-### 4. Create ECR and S3 Resources
+### 4. Phase 1: Create S3 and ECR
 
-Set Terraform variables in a local `.tfvars` file or through the command line. Do not commit private values.
+The first apply creates the S3 bucket and ECR repository only. Lambda and Step Functions are not created yet because the Lambda image does not exist in ECR.
 
-Required variables:
+Review the plan:
 
-```hcl
-bucket_name      = "your-globally-unique-bucket-name"
-lambda_image_uri = "placeholder-until-image-is-pushed"
+```powershell
+terraform plan -var="bucket_name=your-unique-bucket-name"
 ```
 
-### 5. Build and Push Lambda Image
+Apply only when the AWS account and billing setup are ready:
+
+```powershell
+terraform apply -var="bucket_name=your-unique-bucket-name"
+```
+
+This creates S3 and ECR, but not Lambda or Step Functions.
+
+### 5. Phase 2: Build and Push Lambda Image
 
 After the ECR repository exists, build and push the Lambda image.
 
@@ -81,18 +88,20 @@ Template script:
 
 Use the pushed image URI as the `lambda_image_uri` Terraform variable.
 
-### 6. Apply Lambda and Step Functions
+### 6. Phase 3: Deploy Lambda and Step Functions
 
-After reviewing the Terraform plan:
+After the image is pushed to ECR, run Terraform again with `deploy_lambda=true` and the full image URI.
+
+Review the plan:
 
 ```powershell
-terraform plan
+terraform plan -var="bucket_name=your-unique-bucket-name" -var="deploy_lambda=true" -var="lambda_image_uri=YOUR_ECR_IMAGE_URI"
 ```
 
-Only when everything is ready:
+Apply only when the plan looks correct:
 
 ```powershell
-terraform apply
+terraform apply -var="bucket_name=your-unique-bucket-name" -var="deploy_lambda=true" -var="lambda_image_uri=YOUR_ECR_IMAGE_URI"
 ```
 
 ### 7. Upload CICIDS2017 Sample CSV to S3

@@ -11,3 +11,13 @@ models/*
 
 .env
 .DS_Store
+
+# Terraform local state
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform_plan*.txt
+
+# Local AWS test inputs/outputs
+step_input_*.json
+aws_*_summary.json

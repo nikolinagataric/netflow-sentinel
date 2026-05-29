@@ -66,18 +66,24 @@ resource "aws_iam_role" "step_functions_role" {
 }
 
 data "aws_iam_policy_document" "step_functions_policy" {
+  count = var.deploy_lambda ? 1 : 0
+
   statement {
     actions   = ["lambda:InvokeFunction"]
-    resources = [aws_lambda_function.pipeline.arn]
+    resources = [aws_lambda_function.pipeline[0].arn]
   }
 }
 
 resource "aws_iam_policy" "step_functions_policy" {
+  count = var.deploy_lambda ? 1 : 0
+
   name   = "${local.name_prefix}-step-functions-policy"
-  policy = data.aws_iam_policy_document.step_functions_policy.json
+  policy = data.aws_iam_policy_document.step_functions_policy[0].json
 }
 
 resource "aws_iam_role_policy_attachment" "step_functions_policy" {
+  count = var.deploy_lambda ? 1 : 0
+
   role       = aws_iam_role.step_functions_role.name
-  policy_arn = aws_iam_policy.step_functions_policy.arn
+  policy_arn = aws_iam_policy.step_functions_policy[0].arn
 }
