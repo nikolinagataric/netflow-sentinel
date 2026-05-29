@@ -7,3 +7,4 @@ pytest
 joblib
 streamlit
 plotly
+boto3

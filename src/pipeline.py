@@ -47,7 +47,14 @@ def parse_args():
     return parser.parse_args()
 
 
-def run_pipeline(input_path, output_path, max_rows=None, train_model=False):
+def run_pipeline(
+    input_path,
+    output_path,
+    max_rows=None,
+    train_model=False,
+    reports_dir="reports",
+    model_output_path="models/random_forest_model.joblib",
+):
     """pokreće cijeli pipeline od ulaznog fajla do anotiranog izlaza."""
     print("Selecting input reader...")
     reader = get_reader(input_path)
@@ -64,7 +71,7 @@ def run_pipeline(input_path, output_path, max_rows=None, train_model=False):
     # schema validacija provjerava da li imamo sve potrebne kolone
     print("Validating schema...")
     schema_report = validate_schema(df)
-    save_json(schema_report, "reports/schema_report.json")
+    save_json(schema_report, f"{reports_dir}/schema_report.json")
     if not schema_report["is_valid"]:
         raise ValueError(
             "Invalid schema. Missing columns: "
@@ -74,7 +81,7 @@ def run_pipeline(input_path, output_path, max_rows=None, train_model=False):
     # value validacija ne zaustavlja pipeline, nego pravi izvještaj o problemima
     print("Validating values...")
     value_report = validate_values(df)
-    save_json(value_report, "reports/value_report.json")
+    save_json(value_report, f"{reports_dir}/value_report.json")
 
     # nakon validacije redom čistimo, dodajemo feature-e i anotiramo podatke
     print("Cleaning flows...")
@@ -89,8 +96,8 @@ def run_pipeline(input_path, output_path, max_rows=None, train_model=False):
     if train_model:
         # Ovaj ML korak je opcioni dodatak nakon pripreme podataka
         print("Training binary classifier...")
-        model_metrics = train_binary_classifier(df)
-        save_json(model_metrics, "reports/model_metrics.json")
+        model_metrics = train_binary_classifier(df, model_output_path)
+        save_json(model_metrics, f"{reports_dir}/model_metrics.json")
 
     print(f"Saving annotated flows to {output_path}...")
     save_dataframe(df, output_path)
@@ -98,7 +105,7 @@ def run_pipeline(input_path, output_path, max_rows=None, train_model=False):
     # na kraju snimamo kratak izvještaj koji se može brzo pregledati
     print("Creating annotation summary...")
     annotation_summary = create_annotation_summary(df)
-    save_json(annotation_summary, "reports/annotation_summary.json")
+    save_json(annotation_summary, f"{reports_dir}/annotation_summary.json")
 
     print("Pipeline completed successfully.")
     return df

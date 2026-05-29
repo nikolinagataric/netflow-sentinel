@@ -197,6 +197,18 @@ The annotation layer maps raw CICIDS2017 labels into simpler categories:
 
 Flows with `medium`, `high` or `critical` risk are marked for manual review.
 
+## AWS Deployment Preparation
+
+The project includes deployment-ready AWS preparation files for a future setup with S3, Lambda container images, Step Functions and Terraform.
+
+Actual deployment is optional and requires a verified AWS account, billing setup and local AWS CLI configuration. The local pipeline, Docker image and dashboard work without AWS.
+
+The detailed deployment plan is documented in:
+
+```text
+docs/aws_deployment_guide.md
+```
+
 ## Future Improvements
 
 - PCAP/PCAPNG reader
