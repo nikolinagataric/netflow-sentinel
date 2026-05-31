@@ -1,8 +1,8 @@
 # AWS Deployment Guide
 
-This document describes the planned AWS deployment flow for NetFlow Sentinel.
+This document describes the AWS deployment flow for NetFlow Sentinel.
 
-The project includes deployment-ready files, but the deployment should only be run after the AWS account, billing setup, and permissions are ready.
+The deployment has been tested with a small `sample_flows.csv` input file to keep the first cloud run small and inexpensive.
 
 ## Important Warnings
 
@@ -28,6 +28,21 @@ S3 input/output bucket
 - Terraform installed
 - Docker installed
 - `aws configure` completed locally
+
+## Two-Phase Terraform Deployment
+
+Terraform is split into two phases because the Lambda function needs a container image that must already exist in ECR.
+
+Phase 1 creates the shared infrastructure:
+
+- S3 bucket
+- ECR repository
+- IAM roles and policies
+
+Phase 2 happens after the Lambda image is built and pushed to ECR. It creates:
+
+- Lambda function
+- Step Functions state machine
 
 ## Deployment Plan
 
@@ -76,6 +91,14 @@ This creates S3 and ECR, but not Lambda or Step Functions.
 
 After the ECR repository exists, build and push the Lambda image.
 
+For Lambda, build the image as a linux/amd64 image and disable provenance/SBOM metadata:
+
+```powershell
+docker buildx build --platform linux/amd64 --provenance=false --sbom=false -f Dockerfile.lambda -t <ECR_URI>:latest --push .
+```
+
+A regular `docker build` followed by `docker push` can create an image manifest that AWS Lambda does not accept.
+
 Template script:
 
 ```powershell
@@ -106,11 +129,13 @@ terraform apply -var="bucket_name=your-unique-bucket-name" -var="deploy_lambda=t
 
 ### 7. Upload CICIDS2017 Sample CSV to S3
 
-Upload a CSV file to the S3 bucket, for example:
+The first successful AWS test used:
 
 ```text
-raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv
+raw/sample_flows.csv
 ```
+
+Larger CICIDS2017 files can be uploaded later after the small test works.
 
 ### 8. Start Step Functions Execution
 
@@ -138,6 +163,29 @@ runs/ddos-test/models/
 ```
 
 The `models/` folder is only created when `train_model` is true.
+
+For the first successful sample run, outputs were checked with:
+
+```powershell
+aws s3 ls s3://netflow-sentinel-nikolina-2026-dev/runs/sample-test-9/ --recursive
+```
+
+That run produced:
+
+```text
+runs/sample-test-9/processed/sample_flows_annotated.csv
+runs/sample-test-9/reports/annotation_summary.json
+runs/sample-test-9/reports/schema_report.json
+runs/sample-test-9/reports/value_report.json
+```
+
+## Troubleshooting
+
+- `AccessDenied` during `terraform apply`: fixed by adding the required IAM permissions for the deployment user.
+- Lambda `memory_size = 4096` did not pass in the tested account setup: reduced to `3008`.
+- ECR Docker login problem: fixed by logging in with an ECR token through `aws ecr get-login-password`.
+- Lambda unsupported image manifest: fixed by using `docker buildx build --platform linux/amd64 --provenance=false --sbom=false`.
+- PowerShell JSON quoting problems for Step Functions input: use a JSON file generated with Python instead of writing long escaped JSON directly in the shell.
 
 ### 10. Cleanup
 
