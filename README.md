@@ -1,117 +1,159 @@
 # NetFlow Sentinel
 
-NetFlow Sentinel is a Python project for processing CICIDS2017 network traffic flow data. It validates, cleans, annotates and analyzes flow records, with an optional machine learning step and a simple dashboard for viewing the results.
+NetFlow Sentinel is a Python project for processing and analyzing network traffic flow data from the CICIDS2017 dataset.
 
-The main focus of the project is the data pipeline: reading raw flow data, checking it, preparing it, adding useful annotations, and exporting results in a reproducible way.
+I built it as a small data pipeline project: it reads raw CSV flow files, checks the data, cleans it, adds a few useful network-related features, annotates traffic by risk, and exports processed results and reports.
 
-## What the Project Does
+The project also includes a simple ML step, a Streamlit dashboard, Docker support, and an AWS deployment setup.
 
-- reads CICIDS2017 CSV flow files
-- validates expected columns and values
-- cleans missing, infinite and duplicate values
-- creates additional network-related features
-- maps raw labels into simpler categories like traffic type, attack family and risk level
-- exports processed data and JSON reports
-- optionally trains a basic BENIGN vs ATTACK classifier
-- provides a Streamlit dashboard for result overview
+## Why I Made This
+
+I wanted to build a project that is more than just a notebook or a single script.
+
+The main idea was to practice how a real data pipeline is structured:
+
+```text
+raw data
+→ validation
+→ cleaning
+→ feature engineering
+→ annotation
+→ reports
+→ optional model training
+```
+
+I chose network traffic data because I already have some background in computer networks, so concepts like ports, packets, TCP/IP traffic and attacks were easier for me to understand and explain.
 
 ## Dataset
 
-This project uses CICIDS2017 CSV flow files.
+The project uses CICIDS2017 CSV flow files.
 
-The raw dataset is not included in this repository because the files are large. To run the project locally, download the CICIDS2017 CSV files separately and place them in:
+The dataset is not included in the repository because the files are large. To run the project locally, the CSV files should be placed in:
 
 ```text
 data/raw/
 ```
 
-Tested files include:
-
-- `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv`
-- `Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv`
-
-## Pipeline Overview
+The main files I tested were:
 
 ```text
-CSV flow file
--> Reader
--> Schema validation
--> Value validation
--> Cleaning
--> Feature engineering
--> Risk annotation
--> Export processed data and reports
--> Optional ML training
--> Dashboard
+Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv
+Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv
 ```
+
+I also use a small `sample_flows.csv` file for quick local, Docker and AWS tests.
+
+## What the Pipeline Does
+
+The pipeline currently supports CICIDS2017 CSV flow files.
+
+Main steps:
+
+```text
+CSV input
+→ column normalization
+→ schema validation
+→ value validation
+→ data cleaning
+→ feature engineering
+→ risk annotation
+→ processed CSV + JSON reports
+```
+
+The annotation step maps raw dataset labels into simpler categories:
+
+```text
+BENIGN   → normal traffic, low risk
+DDoS/DoS → denial_of_service, critical risk
+PortScan → reconnaissance, medium risk
+Patator  → brute_force, high risk
+```
+
+Rows with medium, high or critical risk are marked for manual review.
 
 ## Project Structure
 
 ```text
 netflow-sentinel/
-├── src/              # pipeline modules and CLI tools
-├── tests/            # pytest test suite
-├── dashboard/        # Streamlit dashboard
-├── data/             # raw and processed data folders
-├── reports/          # generated JSON reports
-├── models/           # generated ML model files
-├── docs/             # project notes
-├── infra/            # infrastructure placeholder
-├── notebooks/        # exploratory notebooks
-├── requirements.txt
-├── pytest.ini
+├── src/                  # pipeline code
+├── tests/                # pytest tests
+├── dashboard/            # Streamlit dashboard
+├── data/                 # local data folders
+├── reports/              # generated reports
+├── models/               # generated ML models
+├── docs/                 # AWS deployment notes
+├── infra/terraform/      # Terraform AWS setup
 ├── Dockerfile
-├── .dockerignore
+├── Dockerfile.lambda
+├── requirements.txt
 └── README.md
 ```
 
+Generated files, raw datasets and model outputs are ignored by Git.
+
 ## Setup
+
+Create and activate a virtual environment:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate
+```
+
+Install dependencies:
+
+```powershell
 pip install -r requirements.txt
 ```
 
-## Usage
-
-### Run Tests
+Run tests:
 
 ```powershell
 pytest
 ```
 
-### Inspect Dataset
+## Running the Pipeline
 
-Use this before running the full pipeline to check labels and row distribution:
+Before running the full pipeline, I usually inspect the dataset first:
 
 ```powershell
 python -m src.inspect_dataset --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv"
 ```
 
-### Run Pipeline
+Run the pipeline:
 
 ```powershell
 python -m src.pipeline --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000
 ```
 
-### Run Pipeline With ML
+Run the pipeline with the optional ML step:
 
 ```powershell
 python -m src.pipeline --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000 --train-model
 ```
 
-### Run Dashboard
+## Dashboard
 
-The dashboard reads generated files from `data/processed/` and `reports/`.
+The project includes a simple Streamlit dashboard for viewing processed results.
+
+Run it with:
 
 ```powershell
 streamlit run dashboard/app.py
 ```
 
-### Run With Docker
+The dashboard reads generated files from:
 
-Build image:
+```text
+data/processed/
+reports/
+```
+
+It shows traffic type distribution, risk levels, attack families, top destination ports, a data preview and ML metrics if they exist.
+
+## Docker
+
+Build the Docker image:
 
 ```powershell
 docker build -t netflow-sentinel .
@@ -123,103 +165,127 @@ Show pipeline help:
 docker run --rm netflow-sentinel --help
 ```
 
-Run pipeline with local data mounted, PowerShell version:
+Run the pipeline with local folders mounted:
 
 ```powershell
 docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/reports:/app/reports netflow-sentinel --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000
 ```
 
-Run pipeline with ML:
-
-```powershell
-docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/reports:/app/reports -v ${PWD}/models:/app/models netflow-sentinel --input "data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv" --output "data/processed/ddos_annotated.csv" --max-rows 50000 --train-model
-```
-
-## Example Results
-
-These results are from local sample runs and can change depending on the selected file and row limit.
-
-### DDoS Example Summary
-
-From `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` with `--max-rows 50000`:
-
-- `total_rows`: 48207
-- `traffic_type normal`: 24391
-- `traffic_type attack`: 23816
-- `risk low`: 24391
-- `risk critical`: 23816
-- `attack_family benign`: 24391
-- `attack_family denial_of_service`: 23816
-- `manual_review_count`: 23816
-
-### PortScan Example Summary
-
-From the tested PortScan sample:
-
-- `traffic_type normal`: 45908
-- `traffic_type attack`: 213
-- `risk low`: 45908
-- `risk medium`: 213
-- `attack_family benign`: 45908
-- `attack_family reconnaissance`: 213
-- `manual_review_count`: 213
-
-### ML Example
-
-The optional ML step trains a simple `RandomForestClassifier` for binary classification:
-
-- `0`: BENIGN / normal traffic
-- `1`: ATTACK / malicious traffic
-
-Example metrics from the limited DDoS sample:
-
-- `accuracy`: 1.0
-- `precision`: 1.0
-- `recall`: 1.0
-- `f1_score`: 1.0
-- `train_rows`: 38565
-- `test_rows`: 9642
-
-The model is intentionally simple. I used it only to show that the processed data can be used for a downstream classification task, not as a production-ready intrusion detection system.
-
-## Annotation Logic
-
-The annotation layer maps raw CICIDS2017 labels into simpler categories:
-
-- `BENIGN` -> `normal` / `benign` / `low`
-- `DDoS` / `DoS` -> `attack` / `denial_of_service` / `critical`
-- `PortScan` -> `attack` / `reconnaissance` / `medium`
-- `Patator` -> `attack` / `brute_force` / `high`
-- `Web Attack` -> `attack` / `web_attack` / `high`
-- `Bot` -> `attack` / `botnet` / `high`
-- `Infiltration` -> `attack` / `infiltration` / `critical`
-- unknown attack labels -> `attack` / `other_attack` / `high`
-
-Flows with `medium`, `high` or `critical` risk are marked for manual review.
-
 ## AWS Deployment
 
-The AWS deployment has been tested on a small sample file. The cloud pipeline uses S3, ECR, AWS Lambda, Step Functions and Terraform.
+I also prepared and tested an AWS version of the pipeline.
 
-The AWS test used `sample_flows.csv` to keep the execution small and cheap. The local pipeline, Docker image and dashboard still work without AWS.
+The cloud version uses:
 
-The detailed deployment plan is documented in:
+```text
+S3           → input and output files
+ECR          → Lambda Docker image
+AWS Lambda   → runs the pipeline
+Step Functions → starts the workflow
+Terraform    → creates the infrastructure
+```
+
+The AWS test was done on the small `sample_flows.csv` file to keep the execution simple and cheap.
+
+The test produced outputs in S3:
+
+```text
+processed/sample_flows_annotated.csv
+reports/annotation_summary.json
+reports/schema_report.json
+reports/value_report.json
+```
+
+More details are in:
 
 ```text
 docs/aws_deployment_guide.md
 ```
 
+## Example Results
+
+These results are from local test runs and can change depending on the selected file and row limit.
+
+### DDoS sample
+
+From `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` with `--max-rows 50000`:
+
+```text
+total rows: 48207
+normal flows: 24391
+attack flows: 23816
+low risk: 24391
+critical risk: 23816
+manual review count: 23816
+```
+
+The DDoS traffic was mapped to:
+
+```text
+attack_family = denial_of_service
+risk_level = critical
+traffic_type = attack
+```
+
+### PortScan sample
+
+From the tested PortScan sample:
+
+```text
+normal flows: 45908
+attack flows: 213
+low risk: 45908
+medium risk: 213
+manual review count: 213
+```
+
+The PortScan traffic was mapped to:
+
+```text
+attack_family = reconnaissance
+risk_level = medium
+traffic_type = attack
+```
+
+## Machine Learning Step
+
+The ML part is intentionally simple.
+
+It trains a basic `RandomForestClassifier` for binary classification:
+
+```text
+0 = normal traffic
+1 = attack traffic
+```
+
+Example metrics from the limited DDoS sample:
+
+```text
+accuracy: 1.0
+precision: 1.0
+recall: 1.0
+f1_score: 1.0
+train rows: 38565
+test rows: 9642
+```
+
+These metrics should not be interpreted as a production-level intrusion detection result. The goal of this step is only to show that the processed data can be used for a downstream classification task.
+
 ## Future Improvements
 
-- PCAP/PCAPNG reader
-- multi-file processing
-- more detailed model evaluation
-- cloud orchestration example
-- Terraform skeleton
-- richer dashboard views
+Some things I would improve next:
+
+```text
+- add real PCAP/PCAPNG parsing
+- process multiple files in one run
+- improve model evaluation
+- add more dashboard views
+- make the AWS pipeline more configurable
+- add support for larger cloud runs
+```
 
 ## Notes
 
-- raw datasets and generated outputs are ignored by Git
-- dataset files must be downloaded separately
-- this is a portfolio/learning project focused on data processing and pipeline structure
+This is a portfolio and learning project focused on data processing, pipeline structure and working with real network traffic flow data.
+
+Raw datasets, processed outputs, reports, models and Terraform state files are not committed to Git.
